@@ -3,7 +3,9 @@ from PIL import Image
 import os
 import importlib.util
 import argparse
+from tqdm import tqdm
 
+assert importlib.util.find_spec("PIL") is not None, "pip install Pillow"
 assert importlib.util.find_spec("diffusers") is not None, "pip install diffusers==0.2.4"
 assert importlib.util.find_spec("transformers") is not None, "pip install transformers"
 assert importlib.util.find_spec("scipy") is not None, "pip install scipy"
@@ -13,8 +15,8 @@ class CFG:
     prompt = "A photo of a cat"
     height = 768
     width = 512
-    num_images = 1
-    num_steps = 1
+    num_images_per_batch = 2
+    num_steps = 5
     use_gpu = True
     output_dir = "../diffusion_images/"
     my_token = None
@@ -24,7 +26,7 @@ def get_args():
     parser.add_argument("--prompt", type=str, default=CFG.prompt)
     parser.add_argument("--height", type=int, default=CFG.height)
     parser.add_argument("--width", type=int, default=CFG.width)
-    parser.add_argument("--num_images", type=int, default=CFG.num_images)
+    parser.add_argument("--num_images_per_batch", type=int, default=CFG.num_images_per_batch)
     parser.add_argument("--num_steps", type=int, default=CFG.num_steps)
     parser.add_argument("--use_gpu", type=bool, default=CFG.use_gpu)
     parser.add_argument("--output_dir", type=str, default=CFG.output_dir)
@@ -43,7 +45,7 @@ def main():
     assert os.path.exists(args.output_dir), "Output directory does not exist! Please provide a valid path."
     assert args.prompt is not None, "Please provide a prompt!"
     if not args.prompt.strip(): raise ValueError("Please provide a prompt!")
-    assert args.num_images > 0, "Please provide a positive number of images to generate!"
+    assert args.num_images_per_batch > 0, "Please provide a positive number of images per batch to generate!"
     assert args.num_steps > 0, "Please provide a positive number of steps to take!"
 
     # get your token at https://huggingface.co/settings/tokens
@@ -65,21 +67,23 @@ def main():
             grid.paste(img, box=(i%cols*w, i//cols*h))
         return grid
 
-    prompt = [args.prompt] * args.num_images
+    prompt = [args.prompt] * args.num_images_per_batch
 
-    for i in range(args.num_steps):
-        print(f"Generating images for step {i+1}.")
+    print("Start generating images...")
+    for i in tqdm(range(args.num_steps)):
 
         images = pipe(prompt, height=args.height, width=args.width)["sample"]
 
-        grid = image_grid(images, rows=1, cols=args.num_images)
+        grid = image_grid(images, rows=1, cols=args.num_images_per_batch)
 
         # you can save the image with
         grid.save(f"../diffusion_images/images_{i+1}.png")
 
-        print(f"Generated {args.num_images * (i + 1)} images.")
-        print(f"Finished generating images.")
-        print(f"Total images generated: {args.num_images * (i + 1)}.")
+        print(f"Total images generated so far: {args.num_images_per_batch * (i + 1)}.")
+    
+    print("Finished generating images!")
+    print("Total images generated: ", args.num_images_per_batch * args.num_steps)
+    print("Images saved to: ", args.output_dir)
 
 if __name__ == "__main__":
     main()
