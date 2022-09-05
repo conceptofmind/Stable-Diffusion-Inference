@@ -3,6 +3,7 @@ from PIL import Image
 import os
 import importlib.util
 import argparse
+import torch
 from tqdm import tqdm
 
 assert importlib.util.find_spec("PIL") is not None, "pip install Pillow"
@@ -17,7 +18,9 @@ class CFG:
     width = 512
     num_images_per_batch = 2
     num_steps = 5
+    num_inference_steps = 50
     use_gpu = True
+    use_low_mem = False
     output_dir = "../diffusion_images/"
     my_token = None
 
@@ -28,7 +31,9 @@ def get_args():
     parser.add_argument("--width", type=int, default=CFG.width)
     parser.add_argument("--num_images_per_batch", type=int, default=CFG.num_images_per_batch)
     parser.add_argument("--num_steps", type=int, default=CFG.num_steps)
+    parser.add_argument("--num_inference_steps", type=int, default=CFG.num_inference_steps)
     parser.add_argument("--use_gpu", type=bool, default=CFG.use_gpu)
+    parser.add_argument("--use_low_mem", type=bool, default=CFG.use_low_mem)
     parser.add_argument("--output_dir", type=str, default=CFG.output_dir)
     parser.add_argument("--my_token", type=str, default=CFG.my_token)
     return parser.parse_args()
@@ -49,7 +54,11 @@ def main():
     assert args.num_steps > 0, "Please provide a positive number of steps to take!"
 
     # get your token at https://huggingface.co/settings/tokens
-    pipe = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4", use_auth_token=args.my_token)
+    if args.use_low_mem == True:
+        print("Using low memory model.")
+        #pipe = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4", revision="fp16", torch_dtype=torch.float16, use_auth_token=args.my_token)
+    else:
+        pipe = StableDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4", use_auth_token=args.my_token)
 
     if args.use_gpu:
         pipe.to("cuda")
@@ -72,18 +81,18 @@ def main():
     print("Start generating images...")
     for i in tqdm(range(args.num_steps)):
 
-        images = pipe(prompt, height=args.height, width=args.width)["sample"]
+        images = pipe(prompt, height=args.height, width=args.width, num_inference_steps=args.num_inference_steps)["sample"]
 
         grid = image_grid(images, rows=1, cols=args.num_images_per_batch)
 
         # you can save the image with
-        grid.save(f"../diffusion_images/images_{i+1}.png")
+        grid.save(f"../diffusion_images/image_{i+1}.png")
 
         print(f"Total images generated so far: {args.num_images_per_batch * (i + 1)}.")
     
     print("Finished generating images!")
     print("Total images generated: ", args.num_images_per_batch * args.num_steps)
-    print("Images saved to: ", args.output_dir)
+    print("Images saved to folder: ", args.output_dir)
 
 if __name__ == "__main__":
     main()
