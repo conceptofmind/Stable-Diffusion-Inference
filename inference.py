@@ -14,10 +14,10 @@ assert importlib.util.find_spec("ftfy") is not None, "pip install ftfy"
 
 class CFG:
     prompt = "A photo of a cat"
-    height = 768
+    height = 512 #768
     width = 512
-    num_images_per_batch = 2
-    num_steps = 5
+    num_images_per_batch = 1
+    num_steps = 20
     num_inference_steps = 50
     use_gpu = True
     use_low_mem = False
